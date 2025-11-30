@@ -8,9 +8,29 @@ use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithValidation;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 class MedicalFilesImport implements ToModel, WithHeadingRow, WithValidation
 {
+    private function parseDate($value)
+    {
+        if (empty($value)) {
+            return null;
+        }
+
+        // If it's just a year (4 digits), convert to January 1st of that year
+        if (is_numeric($value) && strlen((string)$value) === 4) {
+            return Carbon::createFromFormat('Y', $value)->startOfYear()->format('Y-m-d');
+        }
+
+        // Try to parse as a regular date
+        try {
+            return Carbon::parse($value)->format('Y-m-d');
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
+
     public function model(array $row)
     {
         DB::beginTransaction();
@@ -30,7 +50,7 @@ class MedicalFilesImport implements ToModel, WithHeadingRow, WithValidation
                 'name' => $row['husband_name'] ?? $row['الزوج_الاسم'],
                 'national_id' => $row['husband_national_id'] ?? $row['الزوج_الرقم_الوطني'],
                 'registry_number' => $row['husband_registry_number'] ?? $row['الزوج_رقم_القيد'],
-                'dob' => $row['husband_date_of_birth'] ?? $row['الزوج_تاريخ_الميلاد'],
+                'dob' => $this->parseDate($row['husband_date_of_birth'] ?? $row['الزوج_تاريخ_الميلاد'] ?? null),
             ]);
 
             // Create wife patient
@@ -40,7 +60,7 @@ class MedicalFilesImport implements ToModel, WithHeadingRow, WithValidation
                 'name' => $row['wife_name'] ?? $row['الزوجة_الاسم'],
                 'national_id' => $row['wife_national_id'] ?? $row['الزوجة_الرقم_الوطني'],
                 'registry_number' => $row['wife_registry_number'] ?? $row['الزوجة_رقم_القيد'],
-                'dob' => $row['wife_date_of_birth'] ?? $row['الزوجة_تاريخ_الميلاد'],
+                'dob' => $this->parseDate($row['wife_date_of_birth'] ?? $row['الزوجة_تاريخ_الميلاد'] ?? null),
             ]);
 
             DB::commit();
@@ -55,14 +75,6 @@ class MedicalFilesImport implements ToModel, WithHeadingRow, WithValidation
     {
         return [
             'file_number' => 'required|unique:medical_files,file_number',
-            'husband_name' => 'required',
-            'husband_national_id' => 'required',
-            'husband_registry_number' => 'required',
-            'husband_date_of_birth' => 'required|date',
-            'wife_name' => 'required',
-            'wife_national_id' => 'required',
-            'wife_registry_number' => 'required',
-            'wife_date_of_birth' => 'required|date',
         ];
     }
 }
