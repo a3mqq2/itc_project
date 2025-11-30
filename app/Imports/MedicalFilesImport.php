@@ -35,31 +35,30 @@ class MedicalFilesImport implements ToModel, WithHeadingRow, WithValidation
         DB::beginTransaction();
         try {
             $medicalFile = MedicalFile::updateOrCreate(
-                ['file_number' => $row['rkm_almlf']],
+                ['file_number' => $row[0]],
                 [
-                    'region' => $row['almntk'] ?? null,
-                    'diagnosis' => $row['altshkhys'] ?? null,
-                    'registration_date' => $this->parseDate($row['tarykh_altsgyl'] ?? null) ?? now(),
+                    'region' => $row[1] ?? null,
+                    'diagnosis' => $row[2] ?? null,
+                    'registration_date' => $this->parseDate($row[3] ?? null) ?? now(),
                 ]
             );
-
 
             Patient::create([
                 'medical_file_id' => $medicalFile->id,
                 'type' => 'husband',
-                'name' => $row['alzog_alasm'] ?? null,
-                'national_id' => $row['alzog_alrkm_alotny'] ?? null,
-                'registry_number' => $row['alzog_rkm_alkyd'] ?? null,
-                'dob' => $this->parseDate($row['alzog_tarykh_almylad'] ?? null),
+                'name' => $row[4] ?? null,
+                'national_id' => $row[5] ?? null,
+                'registry_number' => $row[6] ?? null,
+                'dob' => $this->parseDate($row[7] ?? null),
             ]);
 
             Patient::create([
                 'medical_file_id' => $medicalFile->id,
                 'type' => 'wife',
-                'name' => $row['alzog_alasm_zawja'] ?? null,
-                'national_id' => $row['alzog_alrkm_alotny_zawja'] ?? null,
-                'registry_number' => $row['alzog_rkm_alkyd_zawja'] ?? null,
-                'dob' => $this->parseDate($row['alzog_tarykh_almylad_zawja'] ?? null),
+                'name' => $row[8] ?? null,
+                'national_id' => $row[9] ?? null,
+                'registry_number' => $row[10] ?? null,
+                'dob' => $this->parseDate($row[11] ?? null),
             ]);
 
             DB::commit();
@@ -73,7 +72,7 @@ class MedicalFilesImport implements ToModel, WithHeadingRow, WithValidation
     public function rules(): array
     {
         return [
-            'rkm_almlf' => 'nullable',
+            '0' => 'nullable',
         ];
     }
 }
