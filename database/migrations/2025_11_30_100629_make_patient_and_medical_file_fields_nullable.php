@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::table('medical_files', function (Blueprint $table) {
             $table->date('registration_date')->nullable()->change();
+            $table->string('file_number')->nullable()->change();
         });
 
         Schema::table('patients', function (Blueprint $table) {

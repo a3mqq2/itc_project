@@ -9,6 +9,7 @@ use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithValidation;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use PhpOffice\PhpSpreadsheet\Shared\Date;
 
 class MedicalFilesImport implements ToModel, WithHeadingRow, WithValidation
 {
@@ -18,12 +19,10 @@ class MedicalFilesImport implements ToModel, WithHeadingRow, WithValidation
             return null;
         }
 
-        // If it's just a year (4 digits), convert to January 1st of that year
-        if (is_numeric($value) && strlen((string)$value) === 4) {
-            return Carbon::createFromFormat('Y', $value)->startOfYear()->format('Y-m-d');
+        if (is_numeric($value)) {
+            return Carbon::instance(Date::excelToDateTimeObject($value))->format('Y-m-d');
         }
 
-        // Try to parse as a regular date
         try {
             return Carbon::parse($value)->format('Y-m-d');
         } catch (\Exception $e) {
@@ -35,32 +34,32 @@ class MedicalFilesImport implements ToModel, WithHeadingRow, WithValidation
     {
         DB::beginTransaction();
         try {
-            // Create medical file
-            $medicalFile = MedicalFile::create([
-                'file_number' => $row['file_number'] ?? $row['رقم_الملف'],
-                'region' => $row['region'] ?? $row['المنطقة'] ?? null,
-                'diagnosis' => $row['diagnosis'] ?? $row['التشخيص'] ?? null,
-                'registration_date' => $row['registration_date'] ?? $row['تاريخ_التسجيل'] ?? now(),
-            ]);
+            $medicalFile = MedicalFile::updateOrCreate(
+                ['file_number' => $row['rkm_almlf']],
+                [
+                    'region' => $row['almntk'] ?? null,
+                    'diagnosis' => $row['altshkhys'] ?? null,
+                    'registration_date' => $this->parseDate($row['tarykh_altsgyl'] ?? null) ?? now(),
+                ]
+            );
 
-            // Create husband patient
+
             Patient::create([
                 'medical_file_id' => $medicalFile->id,
                 'type' => 'husband',
-                'name' => $row['husband_name'] ?? $row['الزوج_الاسم'],
-                'national_id' => $row['husband_national_id'] ?? $row['الزوج_الرقم_الوطني'],
-                'registry_number' => $row['husband_registry_number'] ?? $row['الزوج_رقم_القيد'],
-                'dob' => $this->parseDate($row['husband_date_of_birth'] ?? $row['الزوج_تاريخ_الميلاد'] ?? null),
+                'name' => $row['alzog_alasm'] ?? null,
+                'national_id' => $row['alzog_alrkm_alotny'] ?? null,
+                'registry_number' => $row['alzog_rkm_alkyd'] ?? null,
+                'dob' => $this->parseDate($row['alzog_tarykh_almylad'] ?? null),
             ]);
 
-            // Create wife patient
             Patient::create([
                 'medical_file_id' => $medicalFile->id,
                 'type' => 'wife',
-                'name' => $row['wife_name'] ?? $row['الزوجة_الاسم'],
-                'national_id' => $row['wife_national_id'] ?? $row['الزوجة_الرقم_الوطني'],
-                'registry_number' => $row['wife_registry_number'] ?? $row['الزوجة_رقم_القيد'],
-                'dob' => $this->parseDate($row['wife_date_of_birth'] ?? $row['الزوجة_تاريخ_الميلاد'] ?? null),
+                'name' => $row['alzog_alasm_zawja'] ?? null,
+                'national_id' => $row['alzog_alrkm_alotny_zawja'] ?? null,
+                'registry_number' => $row['alzog_rkm_alkyd_zawja'] ?? null,
+                'dob' => $this->parseDate($row['alzog_tarykh_almylad_zawja'] ?? null),
             ]);
 
             DB::commit();
@@ -74,7 +73,7 @@ class MedicalFilesImport implements ToModel, WithHeadingRow, WithValidation
     public function rules(): array
     {
         return [
-            'file_number' => 'required|unique:medical_files,file_number',
+            'rkm_almlf' => 'nullable',
         ];
     }
 }
