@@ -4,14 +4,14 @@ namespace App\Imports;
 
 use App\Models\MedicalFile;
 use App\Models\Patient;
-use Maatwebsite\Excel\Concerns\ToModel;
-use Maatwebsite\Excel\Concerns\WithHeadingRow;
-use Maatwebsite\Excel\Concerns\WithValidation;
+use Maatwebsite\Excel\Concerns\ToCollection;
+use Maatwebsite\Excel\Concerns\WithChunkReading;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use PhpOffice\PhpSpreadsheet\Shared\Date;
 
-class MedicalFilesImport implements ToModel, WithHeadingRow, WithValidation
+class MedicalFilesImport implements ToCollection, WithChunkReading
 {
     private function parseDate($value)
     {
@@ -20,6 +20,11 @@ class MedicalFilesImport implements ToModel, WithHeadingRow, WithValidation
         }
 
         if (is_numeric($value)) {
+            // If it's a 4-digit year (1900-2100), treat as year only
+            if ($value >= 1900 && $value <= 2100) {
+                return $value . '-01-01';
+            }
+            // Otherwise treat as Excel serial date
             return Carbon::instance(Date::excelToDateTimeObject($value))->format('Y-m-d');
         }
 
@@ -30,49 +35,62 @@ class MedicalFilesImport implements ToModel, WithHeadingRow, WithValidation
         }
     }
 
-    public function model(array $row)
+    public function collection(Collection $rows)
     {
+        // Skip header row
+        $rows = $rows->skip(1);
+
         DB::beginTransaction();
         try {
-            $medicalFile = MedicalFile::updateOrCreate(
-                ['file_number' => $row[0]],
-                [
-                    'region' => $row[1] ?? null,
-                    'diagnosis' => $row[2] ?? null,
-                    'registration_date' => $this->parseDate($row[3] ?? null) ?? now(),
-                ]
-            );
+            foreach ($rows as $row) {
+                if (empty($row[0]) || strtolower($row[0]) == 'رقم الملف') {
+                    continue;
+                }
 
-            Patient::create([
-                'medical_file_id' => $medicalFile->id,
-                'type' => 'husband',
-                'name' => $row[4] ?? null,
-                'national_id' => $row[5] ?? null,
-                'registry_number' => $row[6] ?? null,
-                'dob' => $this->parseDate($row[7] ?? null),
-            ]);
+                $medicalFile = MedicalFile::updateOrCreate(
+                    ['file_number' => $row[0]],
+                    [
+                        'region' => $row[8] ?? null,
+                        'diagnosis' => $row[9] ?? null,
+                        'registration_date' => now(),
+                    ]
+                );
 
-            Patient::create([
-                'medical_file_id' => $medicalFile->id,
-                'type' => 'wife',
-                'name' => $row[8] ?? null,
-                'national_id' => $row[9] ?? null,
-                'registry_number' => $row[10] ?? null,
-                'dob' => $this->parseDate($row[11] ?? null),
-            ]);
+                // Delete existing patients to avoid duplicates on re-import
+                $medicalFile->patients()->delete();
 
+                Patient::insert([
+                    [
+                        'medical_file_id' => $medicalFile->id,
+                        'type' => 'husband',
+                        'name' => $row[1] ?? null,
+                        'national_id' => $row[3] ?? null,
+                        'registry_number' => $row[5] ?? null,
+                        'dob' => $this->parseDate($row[6] ?? null),
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ],
+                    [
+                        'medical_file_id' => $medicalFile->id,
+                        'type' => 'wife',
+                        'name' => $row[2] ?? null,
+                        'national_id' => $row[4] ?? null,
+                        'registry_number' => $row[5] ?? null,
+                        'dob' => $this->parseDate($row[7] ?? null),
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ],
+                ]);
+            }
             DB::commit();
-            return $medicalFile;
         } catch (\Exception $e) {
             DB::rollBack();
             throw $e;
         }
     }
 
-    public function rules(): array
+    public function chunkSize(): int
     {
-        return [
-            '0' => 'nullable',
-        ];
+        return 100;
     }
 }

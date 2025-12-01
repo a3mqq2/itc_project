@@ -58,14 +58,20 @@
 
     .chart-container {
         position: relative;
-        height: 250px;
-        max-height: 250px;
+        height: 320px;
+        max-height: 320px;
     }
 
     .chart-container-small {
         position: relative;
         height: 200px;
         max-height: 200px;
+    }
+
+    .chart-container-large {
+        position: relative;
+        height: 400px;
+        max-height: 400px;
     }
 
     .quick-search {
@@ -237,13 +243,13 @@
 <!-- Charts Section -->
 <div class="row">
     <!-- Medical Files by Region -->
-    <div class="col-md-6 mb-4">
+    <div class="col-12 mb-4">
         <div class="card chart-card">
             <div class="card-header">
                 <h5><i class="ti ti-map-pin me-2"></i>{{ __('messages.files_by_region') }}</h5>
             </div>
             <div class="card-body">
-                <div class="chart-container-small">
+                <div class="chart-container-large">
                     <canvas id="filesByRegionChart"></canvas>
                 </div>
             </div>

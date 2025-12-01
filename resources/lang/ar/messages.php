@@ -157,6 +157,7 @@ return [
 
     // Appointments
     'appointments' => 'المواعيد',
+    'days_since_registration' => 'يوم منذ التسجيل',
     'add_appointment' => 'إضافة موعد',
     'edit_appointment' => 'تعديل موعد',
     'appointment_created_successfully' => 'تم إنشاء الموعد بنجاح',

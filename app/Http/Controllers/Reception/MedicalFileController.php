@@ -51,7 +51,7 @@ class MedicalFileController extends Controller
     {
         // Get next file number
         $lastFile = MedicalFile::latest('id')->first();
-        $nextFileNumber = $lastFile ? ($lastFile->id + 1) : 1;
+        $nextFileNumber = $lastFile ? ($lastFile->file_number + 1) : 1;
 
         // Get categories
         $categories = MedicalFileCategory::orderBy('name')->get();
@@ -86,6 +86,7 @@ class MedicalFileController extends Controller
             // Create medical file
             $medicalFile = MedicalFile::create([
                 'file_number' => $validated['file_number'],
+                'category_id' => $validated['category_id'] ?? null,
                 'region' => $validated['region'],
                 'diagnosis' => $validated['diagnosis'],
                 'registration_date' => $validated['registration_date'],
@@ -161,6 +162,7 @@ class MedicalFileController extends Controller
             // Update medical file
             $medicalFile->update([
                 'file_number' => $validated['file_number'],
+                'category_id' => $validated['category_id'] ?? null,
                 'region' => $validated['region'],
                 'diagnosis' => $validated['diagnosis'],
                 'registration_date' => $validated['registration_date'],
